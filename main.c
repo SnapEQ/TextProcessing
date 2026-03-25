@@ -244,11 +244,41 @@ void formatLines(char **lines, size_t lineCount, size_t maxNum)
     for (size_t i = 0; i < lineCount; i++)
     {
         deleteWhitespaces(lines[i]);
-        if (!padLineWithZeros(&lines[i], maxNum))
-        {
-            fprintf(stderr, "Could not pad line with zeros\n");
-        }
     }
+}
+
+int addTwoDigits(char **digit1, char **digit2)
+{
+    if (digit1 == NULL || *digit1 == NULL || digit2 == NULL || *digit2 == NULL)
+    {
+        return 0;
+    }
+
+    size_t digi1Len = strlen(*digit1);
+    size_t digi2Len = strlen(*digit2);
+    size_t maxLen = digi1Len > digi2Len ? digi1Len : digi2Len;
+
+    if (!padLineWithZeros(digit1, maxLen) || !padLineWithZeros(digit2, maxLen))
+    {
+        fprintf(stderr, "Failed to pad\n");
+        return 0;
+    }
+
+    int i = (int)maxLen;
+    int carry = 0;
+
+    while (i >= 0)
+    {
+        int num1 = (*digit1)[i] - '0';
+        int num2 = (*digit2)[i] - '0';
+        int sum = num1 + num2 + carry;
+
+        (*digit2)[i] = (sum % 8) + '0';
+        carry = sum / 8;
+        i--;
+    }
+
+    return 1;
 }
 
 int main(int argc, char *argv[])
@@ -266,8 +296,6 @@ int main(int argc, char *argv[])
     {
         printf("%s \n", lines[i]);
     }
-
-    printf("%ld \n", maxNum);
 
     freeLines(lines, lineCount);
 
