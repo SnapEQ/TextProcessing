@@ -209,6 +209,25 @@ void deleteWhitespaces(char *line)
     line[write] = '\0';
 }
 
+void trimLeadingZeros(char *line)
+{
+    if (line == NULL || line[0] == '\0')
+    {
+        return;
+    }
+
+    size_t start = 0;
+    while (line[start] == '0' && line[start + 1] != '\0')
+    {
+        start++;
+    }
+
+    if (start > 0)
+    {
+        memmove(line, line + start, strlen(line + start) + 1);
+    }
+}
+
 int padLineWithZeros(char **line, size_t targetLen)
 {
     if (line == NULL || *line == NULL)
@@ -237,14 +256,6 @@ int padLineWithZeros(char **line, size_t targetLen)
     free(*line);
     *line = tmp;
     return 1;
-}
-
-void formatLines(char **lines, size_t lineCount, size_t maxNum)
-{
-    for (size_t i = 0; i < lineCount; i++)
-    {
-        deleteWhitespaces(lines[i]);
-    }
 }
 
 int addTwoDigits(char **digit1, char **digit2)
@@ -281,6 +292,47 @@ int addTwoDigits(char **digit1, char **digit2)
     return 1;
 }
 
+int addLines(char **lines, size_t lineCount)
+{
+    if (lineCount == 0 || *lines == NULL || lines == NULL)
+    {
+        return 0;
+    }
+
+    for (size_t i = 0; i < lineCount - 1; i++)
+    {
+        addTwoDigits(&lines[i], &lines[i + 1]);
+    }
+
+    return 1;
+}
+
+int formatLines(char **lines, size_t lineCount, size_t maxNum)
+{
+
+    if (lineCount == 0)
+    {
+        return 0;
+    }
+
+    for (size_t i = 0; i < lineCount; i++)
+    {
+        deleteWhitespaces(lines[i]);
+    }
+
+    if (!addLines(lines, lineCount))
+    {
+        return 0;
+    }
+
+    for (size_t i = 0; i < lineCount; i++)
+    {
+        trimLeadingZeros(lines[i]);
+    }
+
+    return 1;
+}
+
 int main(int argc, char *argv[])
 {
     (void)argc;
@@ -291,11 +343,7 @@ int main(int argc, char *argv[])
     char **lines = getLines(&lineCount, &maxNum);
 
     formatLines(lines, lineCount, maxNum);
-
-    for (size_t i = 0; i < lineCount; i++)
-    {
-        printf("%s \n", lines[i]);
-    }
+    printf("%s \n", lines[lineCount-1]);
 
     freeLines(lines, lineCount);
 
