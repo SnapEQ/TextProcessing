@@ -294,20 +294,24 @@ int addTwoDigits(char **digit1, char **digit2)
 
 int addLines(char **lines, size_t lineCount)
 {
-    if (lineCount == 0 || *lines == NULL || lines == NULL)
+    if (lineCount == 0 || lines == NULL || *lines == NULL)
     {
         return 0;
     }
 
     for (size_t i = 0; i < lineCount - 1; i++)
     {
-        addTwoDigits(&lines[i], &lines[i + 1]);
+        if (!addTwoDigits(&lines[i], &lines[i + 1]))
+        {
+            fprintf(stderr, "Could not add two digits\n");
+            return 0;
+        }
     }
 
     return 1;
 }
 
-int formatLines(char **lines, size_t lineCount, size_t maxNum)
+int formatLines(char **lines, size_t lineCount)
 {
 
     if (lineCount == 0)
@@ -342,8 +346,20 @@ int main(int argc, char *argv[])
     size_t maxNum = 0;
     char **lines = getLines(&lineCount, &maxNum);
 
-    formatLines(lines, lineCount, maxNum);
-    printf("%s \n", lines[lineCount-1]);
+    if (lines == NULL || lineCount < 1)
+    {
+        fprintf(stderr, "Program failed\n");
+        return 1;
+    }
+
+    if (!formatLines(lines, lineCount))
+    {
+        fprintf(stderr, "Program failed\n");
+        freeLines(lines, lineCount);
+        return 1;
+    }
+
+    printf("%s \n", lines[lineCount - 1]);
 
     freeLines(lines, lineCount);
 
