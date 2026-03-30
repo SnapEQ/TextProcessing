@@ -311,10 +311,43 @@ int addLines(char **lines, size_t lineCount)
     return 1;
 }
 
-int formatLines(char **lines, size_t lineCount)
+char **duplicateLines(char **lines, size_t lineCount)
+{
+    if (lines == NULL || lineCount == 0)
+    {
+        return NULL;
+    }
+
+    char **copies = malloc(lineCount * sizeof(*copies));
+    if (copies == NULL)
+    {
+        return NULL;
+    }
+
+    for (size_t i = 0; i < lineCount; i++)
+    {
+        size_t len = strlen(lines[i]);
+        copies[i] = malloc(len + 1);
+        if (copies[i] == NULL)
+        {
+            for (size_t j = 0; j < i; j++)
+            {
+                free(copies[j]);
+            }
+            free(copies);
+            return NULL;
+        }
+
+        memcpy(copies[i], lines[i], len + 1);
+    }
+
+    return copies;
+}
+
+int formatLines(char **lines, size_t lineCount, char ***sanitizedLines)
 {
 
-    if (lineCount == 0)
+    if (lineCount == 0 || sanitizedLines == NULL)
     {
         return 0;
     }
@@ -324,8 +357,16 @@ int formatLines(char **lines, size_t lineCount)
         deleteWhitespaces(lines[i]);
     }
 
+    *sanitizedLines = duplicateLines(lines, lineCount);
+    if (*sanitizedLines == NULL)
+    {
+        return 0;
+    }
+
     if (!addLines(lines, lineCount))
     {
+        freeLines(*sanitizedLines, lineCount);
+        *sanitizedLines = NULL;
         return 0;
     }
 
@@ -345,6 +386,7 @@ int main(int argc, char *argv[])
     size_t lineCount = 0;
     size_t maxNum = 0;
     char **lines = getLines(&lineCount, &maxNum);
+    char **sanitizedLines = NULL;
 
     if (lines == NULL || lineCount < 1)
     {
@@ -352,15 +394,22 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (!formatLines(lines, lineCount))
+    if (!formatLines(lines, lineCount, &sanitizedLines))
     {
         fprintf(stderr, "Program failed\n");
+        freeLines(sanitizedLines, lineCount);
         freeLines(lines, lineCount);
         return 1;
     }
 
-    printf("%s \n", lines[lineCount - 1]);
+    printf("Sum:\n%s\n\n", lines[lineCount - 1]);
+    printf("Input numbers:\n");
+    for (size_t i = 0; i < lineCount; i++)
+    {
+        printf("%s\n", sanitizedLines[i]);
+    }
 
+    freeLines(sanitizedLines, lineCount);
     freeLines(lines, lineCount);
 
     return 0;
