@@ -1,6 +1,7 @@
 #include "rand_malloc.h"
 #include <stddef.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
@@ -20,6 +21,21 @@ static void discardLine(int ch)
     }
 }
 
+void freeLines(char **lines, size_t lineCount)
+{
+    if (lines == NULL)
+    {
+        return;
+    }
+
+    for (size_t i = 0; i < lineCount; ++i)
+    {
+        free(lines[i]);
+    }
+
+    free(lines);
+}
+
 char *getLine(LineStatus *status, size_t *maxNum)
 {
     size_t buffSize = 1024;
@@ -29,11 +45,7 @@ char *getLine(LineStatus *status, size_t *maxNum)
 
     if (buffer == NULL)
     {
-        if (status != NULL)
-        {
-            *status = LINE_STATUS_SKIP;
-        }
-        discardLine(getchar());
+        fprintf(stderr, "Failed to allocate memory for line, Aborting...\n");
         return NULL;
     }
 
@@ -41,7 +53,6 @@ char *getLine(LineStatus *status, size_t *maxNum)
 
     while ((ch = getchar()) != EOF)
     {
-
         if (!(isspace((unsigned char)ch) || (ch >= '0' && ch <= '7')))
         {
             fprintf(stderr, "Error: only digits 0-7 and whitespace are allowed \n");
@@ -119,6 +130,7 @@ char **getLines(size_t *lineCount, size_t *maxNum)
 
     if (lines == NULL)
     {
+        fprintf(stderr, "Failed to allocate lines buffer");
         return NULL;
     }
 
@@ -133,7 +145,14 @@ char **getLines(size_t *lineCount, size_t *maxNum)
             {
                 continue;
             }
-            break;
+
+            if (status == LINE_STATUS_EOF)
+            {
+                break;
+            }
+
+            freeLines(lines, count);
+            return NULL;
         }
 
         if (count == capacity)
@@ -144,11 +163,7 @@ char **getLines(size_t *lineCount, size_t *maxNum)
             if (tmp == NULL)
             {
                 free(line);
-                for (size_t i = 0; i < count; ++i)
-                {
-                    free(lines[i]);
-                }
-                free(lines);
+                freeLines(lines, count);
                 return NULL;
             }
 
@@ -170,21 +185,6 @@ char **getLines(size_t *lineCount, size_t *maxNum)
     }
 
     return lines;
-}
-
-void freeLines(char **lines, size_t lineCount)
-{
-    if (lines == NULL)
-    {
-        return;
-    }
-
-    for (size_t i = 0; i < lineCount; ++i)
-    {
-        free(lines[i]);
-    }
-
-    free(lines);
 }
 
 void deleteWhitespaces(char *line)
@@ -380,8 +380,6 @@ int formatLines(char **lines, size_t lineCount, char ***sanitizedLines)
 
 int main(int argc, char *argv[])
 {
-    (void)argc;
-    (void)argv;
 
     size_t lineCount = 0;
     size_t maxNum = 0;
