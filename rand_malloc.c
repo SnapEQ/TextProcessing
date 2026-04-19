@@ -3,9 +3,9 @@
 #include <time.h>
 
 /** Rate of random error injection. Acceptable values: 0-100 */
-unsigned const ALLOCATION_ERROR_RATE = 0;
+unsigned const ALLOCATION_ERROR_RATE = 2;
 
-bool randomness_initialized = true;
+bool randomness_initialized = false;
 
 bool check_whether_to_call_real_function()
 {

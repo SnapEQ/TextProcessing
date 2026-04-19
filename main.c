@@ -21,6 +21,47 @@ static void discardLine(int ch)
     }
 }
 
+static int isAllowedLineChar(int ch)
+{
+    return isspace((unsigned char)ch) || (ch >= '0' && ch <= '7');
+}
+
+static int growLineBuffer(char **buffer, size_t *buffSize)
+{
+    size_t newSize = (*buffSize) * 2;
+    char *tmp = realloc(*buffer, newSize);
+    if (tmp == NULL)
+    {
+        return 0;
+    }
+
+    *buffer = tmp;
+    *buffSize = newSize;
+    return 1;
+}
+
+static int appendCharToLine(char **buffer, size_t *buffSize, size_t *length, int ch)
+{
+    if (*length + 1 >= *buffSize)
+    {
+        if (!growLineBuffer(buffer, buffSize))
+        {
+            return 0;
+        }
+    }
+
+    (*buffer)[(*length)++] = (char)ch;
+    return 1;
+}
+
+static void updateMaxDigits(size_t *maxNum, size_t numCnt)
+{
+    if (maxNum != NULL && *maxNum < numCnt)
+    {
+        *maxNum = numCnt;
+    }
+}
+
 void freeLines(char **lines, size_t lineCount)
 {
     if (lines == NULL)
@@ -53,7 +94,7 @@ char *getLine(LineStatus *status, size_t *maxNum)
 
     while ((ch = getchar()) != EOF)
     {
-        if (!(isspace((unsigned char)ch) || (ch >= '0' && ch <= '7')))
+        if (!isAllowedLineChar(ch))
         {
             fprintf(stderr, "Error: only digits 0-7 and whitespace are allowed \n");
             free(buffer);
@@ -70,25 +111,16 @@ char *getLine(LineStatus *status, size_t *maxNum)
             numCnt++;
         }
 
-        if (length + 1 >= buffSize)
+        if (!appendCharToLine(&buffer, &buffSize, &length, ch))
         {
-            buffSize *= 2;
-            char *tmp = realloc(buffer, buffSize);
-            if (tmp == NULL)
+            free(buffer);
+            if (status != NULL)
             {
-                free(buffer);
-                if (status != NULL)
-                {
-                    *status = LINE_STATUS_SKIP;
-                }
-                discardLine(ch);
-                return NULL;
+                *status = LINE_STATUS_SKIP;
             }
-
-            buffer = tmp;
+            discardLine(ch);
+            return NULL;
         }
-
-        buffer[length++] = (char)ch;
 
         if (ch == '\n')
             break;
@@ -110,18 +142,51 @@ char *getLine(LineStatus *status, size_t *maxNum)
         *status = LINE_STATUS_OK;
     }
 
-    if (*maxNum < numCnt)
-    {
-        *maxNum = numCnt;
-    }
+    updateMaxDigits(maxNum, numCnt);
+
     return buffer;
+}
+
+static char **allocateLinesBuffer(size_t capacity)
+{
+    return malloc(capacity * sizeof(char *));
+}
+
+static int growLinesBuffer(char ***lines, size_t *capacity)
+{
+    size_t newCapacity = (*capacity) * 2;
+    char **tmp = realloc(*lines, newCapacity * sizeof(*tmp));
+    if (tmp == NULL)
+    {
+        return 0;
+    }
+
+    *lines = tmp;
+    *capacity = newCapacity;
+    return 1;
+}
+
+static int handleGetLineFailure(LineStatus status, char **lines, size_t count)
+{
+    if (status == LINE_STATUS_SKIP)
+    {
+        return 1;
+    }
+
+    if (status == LINE_STATUS_EOF)
+    {
+        return 0;
+    }
+
+    freeLines(lines, count);
+    return -1;
 }
 
 char **getLines(size_t *lineCount, size_t *maxNum)
 {
     size_t capacity = 8;
     size_t count = 0;
-    char **lines = malloc(capacity * sizeof(*lines));
+    char **lines = allocateLinesBuffer(capacity);
 
     if (lineCount != NULL)
     {
@@ -141,33 +206,28 @@ char **getLines(size_t *lineCount, size_t *maxNum)
 
         if (line == NULL)
         {
-            if (status == LINE_STATUS_SKIP)
+            int action = handleGetLineFailure(status, lines, count);
+            if (action > 0)
             {
                 continue;
             }
 
-            if (status == LINE_STATUS_EOF)
+            if (action == 0)
             {
                 break;
             }
 
-            freeLines(lines, count);
             return NULL;
         }
 
         if (count == capacity)
         {
-            capacity *= 2;
-            char **tmp = realloc(lines, capacity * sizeof(*tmp));
-
-            if (tmp == NULL)
+            if (!growLinesBuffer(&lines, &capacity))
             {
                 free(line);
                 freeLines(lines, count);
                 return NULL;
             }
-
-            lines = tmp;
         }
 
         lines[count++] = line;
