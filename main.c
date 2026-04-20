@@ -13,6 +13,14 @@ typedef enum
     LINE_STATUS_EOF
 } LineStatus;
 
+void setLineStatus(LineStatus *status, LineStatus value)
+{
+    if (status != NULL)
+    {
+        *status = value;
+    }
+}
+
 void discardLine(int ch)
 {
     while (ch != '\n' && ch != EOF)
@@ -77,6 +85,34 @@ void freeLines(char **lines, size_t lineCount)
     free(lines);
 }
 
+char *rejectCurrentLine(char *buffer, LineStatus *status, int ch, const char *message)
+{
+    if (message != NULL)
+    {
+        fprintf(stderr, "%s", message);
+    }
+
+    free(buffer);
+    setLineStatus(status, LINE_STATUS_SKIP);
+    discardLine(ch);
+    return NULL;
+}
+
+char *finalizeLineRead(char *buffer, size_t length, int ch, size_t numCnt, LineStatus *status, size_t *maxNum)
+{
+    if (length == 0 && ch == EOF)
+    {
+        free(buffer);
+        setLineStatus(status, LINE_STATUS_EOF);
+        return NULL;
+    }
+
+    buffer[length] = '\0';
+    setLineStatus(status, LINE_STATUS_OK);
+    updateMaxDigits(maxNum, numCnt);
+    return buffer;
+}
+
 char *getLine(LineStatus *status, size_t *maxNum)
 {
     size_t buffSize = 1024;
@@ -90,20 +126,17 @@ char *getLine(LineStatus *status, size_t *maxNum)
         return NULL;
     }
 
-    int ch;
+    int ch = EOF;
 
     while ((ch = getchar()) != EOF)
     {
         if (!isAllowedLineChar(ch))
         {
-            fprintf(stderr, "Error: only digits 0-7 and whitespace are allowed \n");
-            free(buffer);
-            if (status != NULL)
-            {
-                *status = LINE_STATUS_SKIP;
-            }
-            discardLine(ch);
-            return NULL;
+            return rejectCurrentLine(
+                buffer,
+                status,
+                ch,
+                "Error: only digits 0-7 and whitespace are allowed \n");
         }
 
         if (ch >= '0' && ch <= '7')
@@ -113,38 +146,16 @@ char *getLine(LineStatus *status, size_t *maxNum)
 
         if (!appendCharToLine(&buffer, &buffSize, &length, ch))
         {
-            free(buffer);
-            if (status != NULL)
-            {
-                *status = LINE_STATUS_SKIP;
-            }
-            discardLine(ch);
-            return NULL;
+            return rejectCurrentLine(buffer, status, ch, NULL);
         }
 
         if (ch == '\n')
-            break;
-    }
-
-    if (length == 0 && ch == EOF)
-    {
-        free(buffer);
-        if (status != NULL)
         {
-            *status = LINE_STATUS_EOF;
+            break;
         }
-        return NULL;
     }
 
-    buffer[length] = '\0';
-    if (status != NULL)
-    {
-        *status = LINE_STATUS_OK;
-    }
-
-    updateMaxDigits(maxNum, numCnt);
-
-    return buffer;
+    return finalizeLineRead(buffer, length, ch, numCnt, status, maxNum);
 }
 
 char **allocateLinesBuffer(size_t capacity)
@@ -166,6 +177,22 @@ int growLinesBuffer(char ***lines, size_t *capacity)
     return 1;
 }
 
+int storeLine(char ***lines, size_t *count, size_t *capacity, char *line)
+{
+    if (*count == *capacity)
+    {
+        if (!growLinesBuffer(lines, capacity))
+        {
+            free(line);
+            freeLines(*lines, *count);
+            return 0;
+        }
+    }
+
+    (*lines)[(*count)++] = line;
+    return 1;
+}
+
 int handleGetLineFailure(LineStatus status, char **lines, size_t count)
 {
     if (status == LINE_STATUS_SKIP)
@@ -180,6 +207,22 @@ int handleGetLineFailure(LineStatus status, char **lines, size_t count)
 
     freeLines(lines, count);
     return -1;
+}
+
+char **finalizeLinesRead(char **lines, size_t count, size_t *lineCount)
+{
+    if (lineCount != NULL)
+    {
+        *lineCount = count;
+    }
+
+    if (count == 0)
+    {
+        free(lines);
+        return NULL;
+    }
+
+    return lines;
 }
 
 char **getLines(size_t *lineCount, size_t *maxNum)
@@ -220,31 +263,13 @@ char **getLines(size_t *lineCount, size_t *maxNum)
             return NULL;
         }
 
-        if (count == capacity)
+        if (!storeLine(&lines, &count, &capacity, line))
         {
-            if (!growLinesBuffer(&lines, &capacity))
-            {
-                free(line);
-                freeLines(lines, count);
-                return NULL;
-            }
+            return NULL;
         }
-
-        lines[count++] = line;
     }
 
-    if (lineCount != NULL)
-    {
-        *lineCount = count;
-    }
-
-    if (count == 0)
-    {
-        free(lines);
-        return NULL;
-    }
-
-    return lines;
+    return finalizeLinesRead(lines, count, lineCount);
 }
 
 void deleteWhitespaces(char *line)
