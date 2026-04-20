@@ -13,7 +13,7 @@ typedef enum
     LINE_STATUS_EOF
 } LineStatus;
 
-static void discardLine(int ch)
+void discardLine(int ch)
 {
     while (ch != '\n' && ch != EOF)
     {
@@ -21,12 +21,12 @@ static void discardLine(int ch)
     }
 }
 
-static int isAllowedLineChar(int ch)
+int isAllowedLineChar(int ch)
 {
     return isspace((unsigned char)ch) || (ch >= '0' && ch <= '7');
 }
 
-static int growLineBuffer(char **buffer, size_t *buffSize)
+int growLineBuffer(char **buffer, size_t *buffSize)
 {
     size_t newSize = (*buffSize) * 2;
     char *tmp = realloc(*buffer, newSize);
@@ -40,7 +40,7 @@ static int growLineBuffer(char **buffer, size_t *buffSize)
     return 1;
 }
 
-static int appendCharToLine(char **buffer, size_t *buffSize, size_t *length, int ch)
+int appendCharToLine(char **buffer, size_t *buffSize, size_t *length, int ch)
 {
     if (*length + 1 >= *buffSize)
     {
@@ -54,7 +54,7 @@ static int appendCharToLine(char **buffer, size_t *buffSize, size_t *length, int
     return 1;
 }
 
-static void updateMaxDigits(size_t *maxNum, size_t numCnt)
+void updateMaxDigits(size_t *maxNum, size_t numCnt)
 {
     if (maxNum != NULL && *maxNum < numCnt)
     {
@@ -147,12 +147,12 @@ char *getLine(LineStatus *status, size_t *maxNum)
     return buffer;
 }
 
-static char **allocateLinesBuffer(size_t capacity)
+char **allocateLinesBuffer(size_t capacity)
 {
     return malloc(capacity * sizeof(char *));
 }
 
-static int growLinesBuffer(char ***lines, size_t *capacity)
+int growLinesBuffer(char ***lines, size_t *capacity)
 {
     size_t newCapacity = (*capacity) * 2;
     char **tmp = realloc(*lines, newCapacity * sizeof(*tmp));
@@ -166,7 +166,7 @@ static int growLinesBuffer(char ***lines, size_t *capacity)
     return 1;
 }
 
-static int handleGetLineFailure(LineStatus status, char **lines, size_t count)
+int handleGetLineFailure(LineStatus status, char **lines, size_t count)
 {
     if (status == LINE_STATUS_SKIP)
     {
