@@ -219,6 +219,7 @@ char **finalizeLinesRead(char **lines, size_t count, size_t *lineCount)
     if (count == 0)
     {
         free(lines);
+        fprintf(stderr, "No lines read \n");
         return NULL;
     }
 
@@ -445,6 +446,7 @@ int formatLines(char **lines, size_t lineCount, char ***sanitizedLines)
     *sanitizedLines = duplicateLines(lines, lineCount);
     if (*sanitizedLines == NULL)
     {
+        fprintf(stderr, "Failed to format lines\n");
         return 0;
     }
 
